@@ -16,5 +16,5 @@
   "compiler": {
     "version": "21"
   },
-  "exclude": []
+  "exclude": ["src"]
 }
