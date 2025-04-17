@@ -7,7 +7,7 @@ import thot.connector.Connector;
 public class CreateBucketsUpdate implements Update {
     @Override
     public boolean run() {
-        final String[] buckets = {ProjectsService.BUCKET_NAME};
+        final String[] buckets = {ProjectsService.BUCKET_NAME, ProjectsService.USER_PROJECT_ASSOCIATION_BUCKET_NAME};
 
         for (String bucket : buckets) {
             if (!(Connector.write(bucket, "TMP", true) && Connector.delete(bucket, "TMP"))) {
@@ -19,7 +19,7 @@ public class CreateBucketsUpdate implements Update {
 
     @Override
     public String getName() {
-        return "cipclops_create-buckets";
+        return "ciclops_create-buckets";
     }
 
     @Override

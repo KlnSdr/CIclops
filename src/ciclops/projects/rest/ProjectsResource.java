@@ -2,6 +2,7 @@ package ciclops.projects.rest;
 
 import ciclops.projects.Project;
 import ciclops.projects.ProjectBuilder;
+import ciclops.projects.UserProjectAssociation;
 import ciclops.projects.service.ProjectsService;
 import dobby.annotations.Get;
 import dobby.annotations.Post;
@@ -11,9 +12,24 @@ import dobby.util.json.NewJson;
 import hades.annotations.AuthorizedOnly;
 import hades.util.UserUtil;
 
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 public class ProjectsResource {
     private static final ProjectsService service = ProjectsService.getInstance();
     private static final String BASE_PATH = "/rest/projects";
+
+    @AuthorizedOnly
+    @Get(BASE_PATH)
+    public void getProjects(HttpContext context) {
+        final UserProjectAssociation association = service.getUserProjectAssociation(UserUtil.getCurrentUserId(context));
+
+        final Project[] projects = service.findById(association.getProjects());
+
+        final NewJson json = new NewJson();
+        json.setList("projects", Arrays.stream(projects).map(Project::toJson).collect(Collectors.toList()));
+        context.getResponse().setBody(json);
+    }
 
     @AuthorizedOnly
     @Post(BASE_PATH)
@@ -28,15 +44,27 @@ public class ProjectsResource {
             return;
         }
 
+        final UserProjectAssociation association = service.getUserProjectAssociation(UserUtil.getCurrentUserId(context));
+
         final Project project = new ProjectBuilder()
                 .setProjectName(body.getString("name"))
                 .setGitUrl(body.getString("gitUrl"))
                 .setOwner(UserUtil.getCurrentUserId(context))
                 .build();
 
+        association.addProject(project.getId());
+
         if (!service.update(project)) {
             final NewJson error = new NewJson();
             error.setString("error", "Failed to create project");
+            context.getResponse().setCode(ResponseCodes.INTERNAL_SERVER_ERROR);
+            context.getResponse().setBody(error);
+            return;
+        }
+
+        if (!service.updateUserProjectAssociation(association)) {
+            final NewJson error = new NewJson();
+            error.setString("error", "Failed to update user project association");
             context.getResponse().setCode(ResponseCodes.INTERNAL_SERVER_ERROR);
             context.getResponse().setBody(error);
             return;
