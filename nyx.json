@@ -5,7 +5,13 @@
     "name": "ciclops",
     "version": "1.0-SNAPSHOT",
     "group": "dobby",
-    "dependencies": []
+    "dependencies": [
+      {
+        "group": "dobby",
+        "name": "hades",
+        "version": "2.2-SNAPSHOT"
+      }
+    ]
   },
   "compiler": {
     "version": "21"

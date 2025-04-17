@@ -1,7 +1,9 @@
 package ciclops;
 
-public class Main {
+import hades.Hades;
+
+public class Main extends Hades {
     public static void main(String[] args) {
-        System.out.println("Hello, World!");
+        new Main().startApplication(Main.class);
     }
 }

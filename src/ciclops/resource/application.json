@@ -1,0 +1,40 @@
+{
+  "application": {
+    "name": "ciclops",
+    "version": "1.0",
+    "dbHost": "thot-container",
+    "devMode": true
+  },
+  "dobby": {
+    "staticContent": {
+      "directory": "static"
+    },
+    "session": {
+      "age": 2,
+      "store": "hades.session.HadesSessionStore"
+    },
+    "port": 8080,
+    "threads": 10,
+    "mode": "http",
+    "logLevel": "DEBUG"
+  },
+  "hades": {
+    "disableWelcomeMessage": true,
+    "apidocs": {
+      "enabled": true,
+      "hideHadesRoutes": true
+    },
+    "login": {
+      "maxAttempts": 5,
+      "lockDuration": 300000,
+      "tokenHeaderName": "Hades-Login-Token",
+      "redirect": {
+        "success": "/",
+        "successAdmin": "/hades"
+      }
+    },
+    "unauthorizedRedirectTarget": "/hades/login",
+    "unauthorizedRedirectPaths": [
+    ]
+  }
+}
