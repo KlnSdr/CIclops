@@ -13,7 +13,12 @@ function loadProjects() {
 
       projects.forEach((project) => {
         const li = document.createElement("li");
-        li.innerText = project["name"];
+
+        const link = document.createElement("a");
+        link.href = "{{CONTEXT}}/projects/id/" + project["id"];
+        link.innerText = project["name"];
+        li.appendChild(link);
+
         ul.appendChild(li);
       });
       container.appendChild(ul);
