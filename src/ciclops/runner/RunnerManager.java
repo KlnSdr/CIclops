@@ -4,6 +4,8 @@ import common.logger.Logger;
 import dobby.Config;
 import dobby.task.SchedulerService;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
@@ -13,9 +15,11 @@ public class RunnerManager {
     private final Logger LOGGER = new Logger(RunnerManager.class);
     private final ConcurrentLinkedQueue<UUID> buildQueue;
     private int runningBuilds = 0;
+    private final List<UUID> runningBuildsList;
 
     private RunnerManager() {
         this.buildQueue = new ConcurrentLinkedQueue<>();
+        this.runningBuildsList = new ArrayList<>();
 
         LOGGER.info("adding build queue check task");
         SchedulerService.getInstance().addRepeating(this::checkQueue, Config.getInstance().getInt("application.runner.checkCount", 5), TimeUnit.SECONDS);
@@ -47,9 +51,10 @@ public class RunnerManager {
             }
             LOGGER.debug("Starting build for project: " + projectId);
             incrementRunningBuilds();
+            final UUID runnerId = UUID.randomUUID();
+            addRunningBuild(runnerId);
             new Thread(() -> {
                 try {
-                    final UUID runnerId = UUID.randomUUID();
                     final Runner runner = new Runner(runnerId, projectId);
                     runner.start();
                 } catch (Exception e) {
@@ -57,6 +62,7 @@ public class RunnerManager {
                     LOGGER.trace(e);
                 } finally {
                     decrementRunningBuilds();
+                    removeRunningBuild(runnerId);
                 }
             }).start();
         }
@@ -72,5 +78,17 @@ public class RunnerManager {
 
     private synchronized int getRunningBuilds() {
         return runningBuilds;
+    }
+
+    public List<UUID> getRunningBuildsList() {
+        return List.copyOf(runningBuildsList);
+    }
+
+    private synchronized void addRunningBuild(UUID buildId) {
+        runningBuildsList.add(buildId);
+    }
+
+    private synchronized void removeRunningBuild(UUID buildId) {
+        runningBuildsList.remove(buildId);
     }
 }
