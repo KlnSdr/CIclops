@@ -1,3 +1,4 @@
 # CIclops
 
-- configure count of runner threads via `application.runnerCount` (default `5`) in the `application.json` file
+- configure max count of runner threads via `application.runner.maxCount` (default `5`) in the `application.json` file
+- configure the interval in which ciclops checks for builds in the queue in `s` via `application.runner.checkInterval` (default `5`) in the `application.json` file

@@ -4,7 +4,10 @@
     "version": "1.0-SNAPSHOT",
     "dbHost": "thot-container",
     "devMode": true,
-    "runnerCount": 5
+    "runner": {
+      "maxCount": 5,
+      "checkInterval": 5
+    }
   },
   "dobby": {
     "staticContent": {
