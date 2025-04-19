@@ -80,6 +80,7 @@ public class ProjectDetailsPostFilter implements Filter {
         final NewJson data = new NewJson();
         data.setString("PROJECTDATA", project.toJson().toString());
         data.setString("NAME", project.getName());
+        data.setString("ID", project.getId().toString());
 
         final StaticFile renderedFile = TemplateEngine.render(file, data);
 

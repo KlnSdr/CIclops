@@ -4,6 +4,7 @@ import ciclops.projects.Project;
 import ciclops.projects.ProjectBuilder;
 import ciclops.projects.UserProjectAssociation;
 import ciclops.projects.service.ProjectsService;
+import ciclops.runner.RunnerManager;
 import dobby.annotations.Get;
 import dobby.annotations.Post;
 import dobby.io.HttpContext;
@@ -107,6 +108,20 @@ public class ProjectsResource {
 
         context.getResponse().setCode(ResponseCodes.OK);
         context.getResponse().setBody(project.toJson());
+    }
+
+    @AuthorizedOnly
+    @Post(BASE_PATH + "/id/{id}/trigger-build")
+    public void triggerBuild(HttpContext context) {
+        final String id = context.getRequest().getParam("id");
+        final Project project = service.findById(id);
+
+        if (project == null || !project.getOwner().equals(UserUtil.getCurrentUserId(context))) {
+            context.getResponse().setCode(ResponseCodes.NOT_FOUND);
+            return;
+        }
+
+        RunnerManager.getInstance().addBuildToQueue(project.getId());
     }
 
     private boolean verifyProjectDTO(NewJson body) {
