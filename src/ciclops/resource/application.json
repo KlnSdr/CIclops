@@ -3,7 +3,8 @@
     "name": "ciclops",
     "version": "1.0-SNAPSHOT",
     "dbHost": "thot-container",
-    "devMode": true
+    "devMode": true,
+    "runnerCount": 5
   },
   "dobby": {
     "staticContent": {
@@ -35,6 +36,8 @@
     },
     "unauthorizedRedirectTarget": "/hades/login",
     "unauthorizedRedirectPaths": [
+      "/",
+      "/index.html"
     ]
   }
 }

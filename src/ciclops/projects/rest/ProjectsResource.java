@@ -75,6 +75,25 @@ public class ProjectsResource {
         context.getResponse().setHeader("Location", BASE_PATH + "/id/" + project.getId());
     }
 
+    @Post(BASE_PATH + "/id/{id}/webhook")
+    public void webhook(HttpContext context) {
+        final NewJson body = context.getRequest().getBody();
+        if (body == null) {
+            context.getResponse().setCode(ResponseCodes.BAD_REQUEST);
+            return;
+        }
+
+        final String id = context.getRequest().getParam("id");
+        final Project project = service.findById(id);
+
+        if (project == null) {
+            context.getResponse().setCode(ResponseCodes.NOT_FOUND);
+            return;
+        }
+        new PushWebhookHandler(project, body).handle();
+        context.getResponse().setCode(ResponseCodes.ACCEPTED);
+    }
+
     @AuthorizedOnly
     @Get(BASE_PATH + "/id/{id}")
     public void getProjectById(HttpContext context) {
@@ -98,6 +117,9 @@ public class ProjectsResource {
             return false;
         }
 
-        return body.getString("name") != null && !body.getString("name").isEmpty();
+        return body.getString("name") != null
+                && !body.getString("name").isEmpty()
+                && body.getString("gitUrl") != null
+                && !body.getString("gitUrl").isEmpty();
     }
 }

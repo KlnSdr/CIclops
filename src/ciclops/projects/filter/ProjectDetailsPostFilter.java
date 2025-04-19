@@ -14,7 +14,6 @@ import hades.template.TemplateEngine;
 import hades.user.service.UserService;
 
 import java.util.Base64;
-import java.util.UUID;
 
 public class ProjectDetailsPostFilter implements Filter {
     private static final StaticFileService staticFileService = StaticFileService.getInstance();
@@ -64,7 +63,6 @@ public class ProjectDetailsPostFilter implements Filter {
             ctx.getResponse().setHeader("Location", Config.getInstance().getString("hades.context", "") + "/hades/login?src=" + Base64.getEncoder().encodeToString(path.getBytes()));
             return true;
         }
-        final String userId = ctx.getSession().get("userId");
 
         final Project project = ProjectsService.getInstance().findById(id);
 
