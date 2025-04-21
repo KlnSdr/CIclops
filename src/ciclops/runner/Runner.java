@@ -2,6 +2,7 @@ package ciclops.runner;
 
 import ciclops.projects.Project;
 import ciclops.projects.service.ProjectsService;
+import ciclops.runner.service.BuildProcessLogService;
 import common.logger.Logger;
 import dobby.util.json.NewJson;
 
@@ -10,14 +11,13 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.Base64;
-import java.util.Comparator;
-import java.util.UUID;
+import java.util.*;
 
 public class Runner {
     private final Logger LOGGER = new Logger(Runner.class);
     private final UUID id;
     private final UUID projectId;
+    private static final String BUILD_POD_IMAGE = "ciclopsbuilder:0.20";
 
     public Runner(UUID id, UUID projectId) {
         this.id = id;
@@ -91,16 +91,14 @@ public class Runner {
             return;
         }
         try {
-            Files.walk(tmpDirFile.toPath())
-                    .sorted(Comparator.reverseOrder())
-                    .forEach(path -> {
-                        try {
-                            Files.delete(path);
-                        } catch (Exception e) {
-                            LOGGER.error("Failed to delete file: " + path);
-                            LOGGER.trace(e);
-                        }
-                    });
+            Files.walk(tmpDirFile.toPath()).sorted(Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.delete(path);
+                } catch (Exception e) {
+                    LOGGER.error("Failed to delete file: " + path);
+                    LOGGER.trace(e);
+                }
+            });
         } catch (Exception e) {
             LOGGER.error("Failed to delete tmp dir: " + tmpDir);
             LOGGER.trace(e);
@@ -112,8 +110,13 @@ public class Runner {
         // set env variables
         // - scmURL
         // - inject git credentials
+        final String separator = "---" + id + "---";
 
-        final String command = "podman run --privileged -v /tmp/ciclops/" + id + "/auth.json:/root/.config/containers/auth.json:ro --rm ciclopsbuilder:0.16";
+        final String command = "podman run -e SEPARATOR=" + separator + " --privileged -v /tmp/ciclops/" + id + "/auth.json:/root/.config/containers/auth.json:ro --rm " + BUILD_POD_IMAGE;
+        final NewJson processLog = new NewJson();
+        processLog.setString("id", id.toString());
+
+        final List<String> output = new ArrayList<>();
         try {
             final ProcessBuilder processBuilder = new ProcessBuilder("sh", "-c", command);
             processBuilder.redirectErrorStream(true);
@@ -122,16 +125,67 @@ public class Runner {
             final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
             while ((line = reader.readLine()) != null) {
-                LOGGER.info(line);
+                output.add(line
+                        .replace("\u001B[0m", "")
+                        .replace("\u001B[31m", "")
+                        .replace("\u001B[32m", "")
+                        .replace("\u001B[33m", "")
+                        .replace("\u001B[34m", "")
+                        .replace("\"", "'")
+                );
+                LOGGER.debug(line);
             }
 
             int exitCode = process.waitFor();
+            processLog.setBoolean("success", exitCode == 0);
             if (exitCode != 0) {
                 LOGGER.error("Failed to execute command \"" + command + "\". Exit code: " + exitCode);
             }
         } catch (Exception e) {
             LOGGER.error("Error executing command: " + command);
             LOGGER.trace(e);
+            processLog.setBoolean("success", false);
+            processLog.setString("error", e.getMessage());
         }
+        processLog.setList("rawOutput", output.stream().map(o -> (Object) o).toList());
+        splitIntoSteps(processLog, output);
+
+        if (!BuildProcessLogService.getInstance().saveLog(id, projectId, processLog)) {
+            LOGGER.error("Failed to save build log for project " + projectId);
+        } else {
+            LOGGER.debug("Build log saved successfully for project " + projectId);
+        }
+    }
+
+    private void splitIntoSteps(NewJson pipelineLog, List<String> log) {
+        final List<String> processedLogs = log.stream().map(l -> l.substring(l.indexOf("|") + 1)).toList();
+        final List<NewJson> steps = new ArrayList<>();
+
+        String currentStep = "pod init";
+        List<String> buffer = new ArrayList<>();
+
+        for (String line : processedLogs) {
+            if (line.contains("---" + id + "---")) {
+                if (!buffer.isEmpty()) {
+                    final NewJson stepsLog = new NewJson();
+                    stepsLog.setString("step", currentStep);
+                    stepsLog.setList("log", buffer.stream().map(o -> (Object) o).toList());
+                    steps.add(stepsLog);
+                    buffer = new ArrayList<>();
+                }
+                currentStep = line.replace("---" + id + "---", "");
+            } else {
+                buffer.add(line);
+            }
+        }
+
+        if (!buffer.isEmpty()) {
+            final NewJson stepsLog = new NewJson();
+            stepsLog.setString("step", currentStep);
+            stepsLog.setList("log", buffer.stream().map(o -> (Object) o).toList());
+            steps.add(stepsLog);
+        }
+
+        pipelineLog.setList("steps", steps.stream().map(o -> (Object) o).toList());
     }
 }
