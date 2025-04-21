@@ -5,13 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CIclops - {{NAME}}</title>
     <script src="{{CONTEXT}}/projectDetails/index.js"></script>
+    <script src="{{CONTEXT}}/projectDetails/popup.js"></script>
+    <link rel="stylesheet" href="{{CONTEXT}}/projectDetails/index.css" />
+    <link rel="stylesheet" href="{{CONTEXT}}/projectDetails/popup.css" />
   </head>
   <script lang="js">
     const data = {{PROJECTDATA}};
+    const runs = {{LASTRUNS}};
   </script>
-  <body>
+  <body onload="renderLastLogs()">
+    <a href="{{CONTEXT}}/">Home</a>
     <h1>{{NAME}}</h1>
     <div id="output"></div>
     <button onclick="triggerBuild('{{ID}}')">build</button>
+    <div id="outLastRuns"></div>
   </body>
 </html>

@@ -2,6 +2,8 @@ package ciclops.projects.filter;
 
 import ciclops.projects.Project;
 import ciclops.projects.service.ProjectsService;
+import ciclops.runner.LastRuns;
+import ciclops.runner.service.BuildProcessLogService;
 import dobby.Config;
 import dobby.files.StaticFile;
 import dobby.files.service.StaticFileService;
@@ -13,7 +15,9 @@ import dobby.util.json.NewJson;
 import hades.template.TemplateEngine;
 import hades.user.service.UserService;
 
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 
 public class ProjectDetailsPostFilter implements Filter {
     private static final StaticFileService staticFileService = StaticFileService.getInstance();
@@ -71,6 +75,12 @@ public class ProjectDetailsPostFilter implements Filter {
             return true;
         }
 
+        final LastRuns lastRuns = BuildProcessLogService.getInstance().getLastRuns(project.getId());
+        final List<NewJson> lastRunsLogs = new ArrayList<>();
+        for (String run : lastRuns.getRuns()) {
+            lastRunsLogs.add(BuildProcessLogService.getInstance().getLog(run));
+        }
+
         final StaticFile file = staticFileService.get("/projectDetails/index.html");
 
         if (file == null) {
@@ -81,6 +91,7 @@ public class ProjectDetailsPostFilter implements Filter {
         data.setString("PROJECTDATA", project.toJson().toString());
         data.setString("NAME", project.getName());
         data.setString("ID", project.getId().toString());
+        data.setString("LASTRUNS", lastRunsLogs.toString());
 
         final StaticFile renderedFile = TemplateEngine.render(file, data);
 

@@ -17,7 +17,7 @@ public class Runner {
     private final Logger LOGGER = new Logger(Runner.class);
     private final UUID id;
     private final UUID projectId;
-    private static final String BUILD_POD_IMAGE = "ciclopsbuilder:0.20";
+    private static final String BUILD_POD_IMAGE = "ciclopsbuilder:0.22";
 
     public Runner(UUID id, UUID projectId) {
         this.id = id;
@@ -137,8 +137,9 @@ public class Runner {
             }
 
             int exitCode = process.waitFor();
-            processLog.setBoolean("success", exitCode == 0);
+            processLog.setBoolean("success", findPipelineExitCode(output) == 0);
             if (exitCode != 0) {
+                processLog.setBoolean("success", false);
                 LOGGER.error("Failed to execute command \"" + command + "\". Exit code: " + exitCode);
             }
         } catch (Exception e) {
@@ -155,6 +156,27 @@ public class Runner {
         } else {
             LOGGER.debug("Build log saved successfully for project " + projectId);
         }
+
+        if (!BuildProcessLogService.getInstance().addLogLastRuns(projectId, processLog)) {
+            LOGGER.error("Failed to add build log to last runs for project " + projectId);
+        } else {
+            LOGGER.debug("Build log added to last runs successfully for project " + projectId);
+        }
+    }
+
+    private int findPipelineExitCode(List<String> output) {
+        for (String line : output.reversed()) {
+            if (line.contains("|CICLOPS_EXIT_CODE:")) {
+                final String exitCode = line.substring(line.indexOf("|CICLOPS_EXIT_CODE:") + "|CICLOPS_EXIT_CODE:".length()).trim();
+                try {
+                    return Integer.parseInt(exitCode);
+                } catch (NumberFormatException e) {
+                    LOGGER.error("Failed to parse exit code: " + exitCode);
+                    return -1;
+                }
+            }
+        }
+        return 0;
     }
 
     private void splitIntoSteps(NewJson pipelineLog, List<String> log) {
