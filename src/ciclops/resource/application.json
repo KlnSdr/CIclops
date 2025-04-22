@@ -40,7 +40,11 @@
     "unauthorizedRedirectTarget": "/hades/login",
     "unauthorizedRedirectPaths": [
       "/",
-      "/index.html"
+      "/index.html",
+      "/create",
+      "/create/index.html",
+      "/projectDetails",
+      "/projectDetails/index.html"
     ]
   }
 }

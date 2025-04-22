@@ -1,0 +1,70 @@
+package ciclops.credentials.service;
+
+import ciclops.credentials.AbstractUsernamePasswordCredentials;
+import ciclops.credentials.DockerRepoCredentials;
+import ciclops.credentials.NullCredentials;
+import dobby.util.json.NewJson;
+import thot.connector.Connector;
+import thot.janus.Janus;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+public class CredentialsService {
+    public static final String BUCKET_NAME = "ciclops_credentials";
+    private static CredentialsService instance;
+
+    private CredentialsService() {
+    }
+
+    public static synchronized CredentialsService getInstance() {
+        if (instance == null) {
+            instance = new CredentialsService();
+        }
+        return instance;
+    }
+
+    public boolean saveCredentials(AbstractUsernamePasswordCredentials credentials) {
+        return Connector.write(BUCKET_NAME, credentials.getKey(), credentials.toJson());
+    }
+
+    public AbstractUsernamePasswordCredentials getCredentials(String key) {
+        final NewJson json = Connector.read(BUCKET_NAME, key, NewJson.class);
+        final NullCredentials nullCredentials = Janus.parse(json, NullCredentials.class);
+
+        if (nullCredentials == null) {
+            return null;
+        }
+        return getConcreteImplementation(json);
+    }
+
+    public AbstractUsernamePasswordCredentials[] getCredentialsForUser(UUID userId) {
+        final NewJson[] jsons = Connector.readPattern(BUCKET_NAME, userId.toString() + "_.*", NewJson.class);
+        final List<AbstractUsernamePasswordCredentials> credentials = new ArrayList<>();
+
+        for (final NewJson json : jsons) {
+            final NullCredentials nullCredentials = Janus.parse(json, NullCredentials.class);
+            if (nullCredentials != null) {
+                credentials.add(getConcreteImplementation(json));
+            }
+        }
+
+        return credentials.toArray(new AbstractUsernamePasswordCredentials[0]);
+    }
+
+    public boolean deleteCredentials(String key) {
+        return Connector.delete(BUCKET_NAME, key);
+    }
+
+    private AbstractUsernamePasswordCredentials getConcreteImplementation(NewJson json) {
+        return switch (json.getString("type")) {
+            case "DOCKER" -> {
+                final DockerRepoCredentials dockerRepoCredentials = new DockerRepoCredentials();
+                dockerRepoCredentials.setCredentials(Janus.parse(json, AbstractUsernamePasswordCredentials.class));
+                yield dockerRepoCredentials;
+            }
+            default -> Janus.parse(json, NullCredentials.class);
+        };
+    }
+}
