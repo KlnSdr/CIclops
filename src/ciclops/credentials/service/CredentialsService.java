@@ -3,6 +3,7 @@ package ciclops.credentials.service;
 import ciclops.credentials.AbstractUsernamePasswordCredentials;
 import ciclops.credentials.DockerRepoCredentials;
 import ciclops.credentials.NullCredentials;
+import ciclops.credentials.NyxCredentials;
 import dobby.util.json.NewJson;
 import thot.connector.Connector;
 import thot.janus.Janus;
@@ -63,6 +64,11 @@ public class CredentialsService {
                 final DockerRepoCredentials dockerRepoCredentials = new DockerRepoCredentials();
                 dockerRepoCredentials.setCredentials(Janus.parse(json, AbstractUsernamePasswordCredentials.class));
                 yield dockerRepoCredentials;
+            }
+            case "NYX" -> {
+                final NyxCredentials nyxCredentials = new NyxCredentials();
+                nyxCredentials.setCredentials(Janus.parse(json, AbstractUsernamePasswordCredentials.class));
+                yield nyxCredentials;
             }
             default -> Janus.parse(json, NullCredentials.class);
         };
