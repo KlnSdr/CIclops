@@ -1,5 +1,11 @@
 package ciclops.runner;
 
+import ciclops.credentials.AbstractUsernamePasswordCredentials;
+import ciclops.credentials.DockerRepoCredentials;
+import ciclops.credentials.NyxCredentials;
+import ciclops.credentials.fileGenerators.DockerLoginFileGenerator;
+import ciclops.credentials.fileGenerators.NyxLoginFileGenerator;
+import ciclops.credentials.service.CredentialsService;
 import ciclops.projects.Project;
 import ciclops.projects.service.ProjectsService;
 import ciclops.runner.service.BuildProcessLogService;
@@ -9,7 +15,6 @@ import dobby.util.json.NewJson;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.*;
 
@@ -18,6 +23,8 @@ public class Runner {
     private final UUID id;
     private final UUID projectId;
     private static final String BUILD_POD_IMAGE = "ciclopsbuilder:0.22";
+    private static final CredentialsService credentialsService = CredentialsService.getInstance();
+    private final List<String> additionalMounts = new ArrayList<>();
 
     public Runner(UUID id, UUID projectId) {
         this.id = id;
@@ -38,19 +45,74 @@ public class Runner {
             LOGGER.error("Failed to create tmp dir for project " + project.getName());
             return;
         }
-        final String loginFileJson = generateLoginFile("USERNAME", "PASSWORD", "REPO");
 
-        if (!writeAuthFile(loginFileJson)) {
-            cleanup();
-            LOGGER.error("Failed to write auth file for project " + project.getName());
+        final AbstractUsernamePasswordCredentials[] credentials = getCredentials(project);
+
+        if (!generateDockerLogin(credentials) || !generateNyxLogin(credentials)) {
             return;
         }
+
         initBuildPod(scmUrl);
         cleanup();
     }
 
-    private boolean writeAuthFile(String content) {
-        final String authFilePath = "/tmp/ciclops/" + id + "/auth.json";
+    private boolean generateDockerLogin(AbstractUsernamePasswordCredentials[] credentials) {
+        final List<DockerRepoCredentials> dockerCredentials = Arrays.stream(credentials).filter(e -> e instanceof DockerRepoCredentials).map(e -> (DockerRepoCredentials) e).toList();
+
+        if (dockerCredentials.isEmpty()) {
+            LOGGER.debug("No docker credentials found for project " + projectId);
+            return true;
+        }
+
+        final DockerLoginFileGenerator dockerLoginFileGenerator = new DockerLoginFileGenerator(dockerCredentials);
+        additionalMounts.add(dockerLoginFileGenerator.getFileName() + ":" + dockerLoginFileGenerator.getContainerFilePath());
+
+        if (!writeAuthFile(dockerLoginFileGenerator.getFileContent(), dockerLoginFileGenerator.getFileName())) {
+            cleanup();
+            LOGGER.error("Failed to write docker auth file for project " + projectId);
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean generateNyxLogin(AbstractUsernamePasswordCredentials[] credentials) {
+        final List<NyxCredentials> nyxCredentials = Arrays.stream(credentials).filter(e -> e instanceof NyxCredentials).map(e -> (NyxCredentials) e).toList();
+
+        if (nyxCredentials.isEmpty()) {
+            LOGGER.debug("No nyx credentials found for project " + projectId);
+            return true;
+        }
+
+        final NyxLoginFileGenerator nyxLoginFileGenerator = new NyxLoginFileGenerator(nyxCredentials);
+        additionalMounts.add(nyxLoginFileGenerator.getFileName() + ":" + nyxLoginFileGenerator.getContainerFilePath());
+
+        if (!writeAuthFile(nyxLoginFileGenerator.getFileContent(), nyxLoginFileGenerator.getFileName())) {
+            cleanup();
+            LOGGER.error("Failed to write nyx auth file for project " + projectId);
+            return false;
+        }
+
+        return true;
+    }
+
+    final AbstractUsernamePasswordCredentials[] getCredentials(Project project) {
+        final List<String> credentialsIds = project.getCredentials();
+        final List<AbstractUsernamePasswordCredentials> credentials = new ArrayList<>();
+
+        for (String credentialsId : credentialsIds) {
+            final AbstractUsernamePasswordCredentials credential = credentialsService.getCredentials(credentialsId);
+            if (credential != null) {
+                credentials.add(credential);
+            } else {
+                LOGGER.warn("Credentials not found: " + credentialsId);
+            }
+        }
+        return credentials.toArray(new AbstractUsernamePasswordCredentials[0]);
+    }
+
+    private boolean writeAuthFile(String content, String fileName) {
+        final String authFilePath = "/tmp/ciclops/" + id + "/" + fileName;
         try {
             final File authFile = new File(authFilePath);
             authFile.createNewFile();
@@ -71,17 +133,6 @@ public class Runner {
             return true;
         }
         return tmpDirFile.mkdirs();
-    }
-
-    private String generateLoginFile(String username, String password, String repoUrl) {
-        final NewJson registry = new NewJson();
-        registry.setString("auth", Base64.getEncoder().encodeToString((username + ":" + password).getBytes(StandardCharsets.UTF_8)));
-        final NewJson auths = new NewJson();
-        auths.setJson("REPO", registry);
-        final NewJson json = new NewJson();
-        json.setJson("auths", auths);
-
-        return json.toString().replace("REPO", repoUrl);
     }
 
     private void cleanup() {
@@ -105,6 +156,14 @@ public class Runner {
         }
     }
 
+    private String getMounts() {
+        final StringBuilder mounts = new StringBuilder();
+        for (String mount : additionalMounts) {
+            mounts.append("-v /tmp/ciclops/").append(id).append("/").append(mount).append(":ro ");
+        }
+        return mounts.toString();
+    }
+
     private void initBuildPod(String scmUrl) {
         // TODO
         // set env variables
@@ -112,7 +171,7 @@ public class Runner {
         // - inject git credentials
         final String separator = "---" + id + "---";
 
-        final String command = "podman run -e SEPARATOR=" + separator + " --privileged -v /tmp/ciclops/" + id + "/auth.json:/root/.config/containers/auth.json:ro --rm " + BUILD_POD_IMAGE;
+        final String command = "podman run -e SEPARATOR=" + separator + " --privileged " + getMounts() + "--rm " + BUILD_POD_IMAGE;
         final NewJson processLog = new NewJson();
         processLog.setString("id", id.toString());
 

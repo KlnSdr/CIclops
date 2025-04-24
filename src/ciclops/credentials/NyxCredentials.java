@@ -10,9 +10,4 @@ public class NyxCredentials extends AbstractUsernamePasswordCredentials {
     public NyxCredentials() {
         super();
     }
-
-    @Override
-    public String getFile() {
-        return "";
-    }
 }

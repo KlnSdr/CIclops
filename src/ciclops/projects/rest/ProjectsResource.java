@@ -7,6 +7,7 @@ import ciclops.projects.service.ProjectsService;
 import ciclops.runner.RunnerManager;
 import dobby.annotations.Get;
 import dobby.annotations.Post;
+import dobby.annotations.Put;
 import dobby.io.HttpContext;
 import dobby.io.response.ResponseCodes;
 import dobby.util.json.NewJson;
@@ -14,6 +15,7 @@ import hades.annotations.AuthorizedOnly;
 import hades.util.UserUtil;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class ProjectsResource {
@@ -122,6 +124,38 @@ public class ProjectsResource {
         }
 
         RunnerManager.getInstance().addBuildToQueue(project.getId());
+    }
+
+    @AuthorizedOnly
+    @Put(BASE_PATH + "/id/{id}/credentials")
+    public void updateCredentials(HttpContext context) {
+        final String id = context.getRequest().getParam("id");
+        final NewJson body = context.getRequest().getBody();
+
+        if (!body.hasKey("credentials") || body.getList("credentials") == null) {
+            context.getResponse().setCode(ResponseCodes.BAD_REQUEST);
+            return;
+        }
+
+        final List<Object> credentials = body.getList("credentials");
+        if (!credentials.stream().allMatch(o -> o instanceof String)) {
+            context.getResponse().setCode(ResponseCodes.BAD_REQUEST);
+            return;
+        }
+
+        final Project project = service.findById(id);
+        if (project == null || !project.getOwner().equals(UserUtil.getCurrentUserId(context))) {
+            context.getResponse().setCode(ResponseCodes.NOT_FOUND);
+            return;
+        }
+
+        project.setCredentials(credentials.stream().map(o -> (String) o).collect(Collectors.toList()));
+
+        if (!service.update(project)) {
+            context.getResponse().setCode(ResponseCodes.INTERNAL_SERVER_ERROR);
+            return;
+        }
+        context.getResponse().setCode(ResponseCodes.OK);
     }
 
     private boolean verifyProjectDTO(NewJson body) {

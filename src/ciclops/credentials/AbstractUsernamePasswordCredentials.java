@@ -113,10 +113,6 @@ public class AbstractUsernamePasswordCredentials implements DataClass {
         return id;
     }
 
-    public String getFile() {
-        return "";
-    }
-
     public void setCredentials(AbstractUsernamePasswordCredentials credentials) {
         this.credentials = credentials;
     }

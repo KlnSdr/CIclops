@@ -10,9 +10,4 @@ public class NullCredentials extends AbstractUsernamePasswordCredentials {
     public NullCredentials() {
         super();
     }
-
-    @Override
-    public String getFile() {
-        return "";
-    }
 }

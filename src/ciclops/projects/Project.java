@@ -2,9 +2,12 @@ package ciclops.projects;
 
 import dobby.util.json.NewJson;
 import thot.janus.DataClass;
+import thot.janus.annotations.JanusList;
 import thot.janus.annotations.JanusString;
 import thot.janus.annotations.JanusUUID;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class Project implements DataClass {
@@ -16,6 +19,8 @@ public class Project implements DataClass {
     private UUID id;
     @JanusUUID("owner")
     private UUID owner;
+    @JanusList("credentials")
+    private List<String> credentials = new ArrayList<>();
 
     public Project() {
         this.id = UUID.randomUUID();
@@ -53,6 +58,14 @@ public class Project implements DataClass {
         this.owner = owner;
     }
 
+    public List<String> getCredentials() {
+        return credentials;
+    }
+
+    public void setCredentials(List<String> credentials) {
+        this.credentials = credentials;
+    }
+
     @Override
     public String getKey() {
         return id.toString();
@@ -64,6 +77,7 @@ public class Project implements DataClass {
         json.setString("name", name);
         json.setString("gitUrl", gitUrl);
         json.setString("id", id.toString());
+        json.setList("credentials", credentials.stream().map(o -> (Object) o).toList());
         json.setString("owner", owner.toString());
         return json;
     }

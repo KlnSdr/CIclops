@@ -10,9 +10,4 @@ public class DockerRepoCredentials extends AbstractUsernamePasswordCredentials {
     public DockerRepoCredentials() {
         super();
     }
-
-    @Override
-    public String getFile() {
-        return "";
-    }
 }

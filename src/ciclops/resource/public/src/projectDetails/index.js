@@ -53,3 +53,88 @@ function openPopupWithLogs(logs) {
 
   openPopup(container);
 }
+
+function openSettings(id) {
+  const content = document.createElement("div");
+
+  const bttnSave = document.createElement("button");
+  bttnSave.innerText = "save";
+  bttnSave.addEventListener("click", () => saveUsedCredentials(id, bttnSave));
+  content.appendChild(bttnSave);
+
+  const headCredentials = document.createElement("h1");
+  headCredentials.innerText = "credentials";
+  content.appendChild(headCredentials);
+
+  const ulCreds = document.createElement("ul");
+  ulCreds.id = "outCredentials";
+  content.appendChild(ulCreds);
+
+  openPopup(content);
+
+  loadCredentials(data.credentials);
+}
+
+function loadCredentials(currentCredentials) {
+  const container = document.getElementById("outCredentials");
+  container.innerHTML = "";
+  fetch("{{CONTEXT}}/rest/credentials")
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then((data) => {
+      Object.keys(data).forEach((key) => {
+        const li = document.createElement("li");
+        li.innerText = data[key];
+
+        const cbUsed = document.createElement("input");
+        cbUsed.type = "checkbox";
+        cbUsed.checked = currentCredentials.includes(key);
+        cbUsed.value = key;
+        cbUsed.classList.add("cbCredentials");
+
+        li.appendChild(cbUsed);
+
+        container.appendChild(li);
+      });
+    })
+    .catch((e) => {
+      console.error(e);
+      container.innerText = "could not load credentials";
+    });
+}
+
+function saveUsedCredentials(id, self) {
+  const usedCredentials = [];
+  Array.from(document.getElementsByClassName("cbCredentials")).forEach(
+    (element) => {
+      if (element.checked) {
+        usedCredentials.push(element.value);
+      }
+    }
+  );
+
+  fetch(`{{CONTEXT}}/rest/projects/id/${id}/credentials`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      credentials: usedCredentials,
+    }),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      }
+      closePopup(self);
+    })
+    .catch((e) => {
+      console.error(e);
+      alert("failed to save settings");
+      closePopup(self);
+    });
+}
