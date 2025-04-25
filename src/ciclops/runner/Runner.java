@@ -4,7 +4,6 @@ import ciclops.credentials.AbstractUsernamePasswordCredentials;
 import ciclops.credentials.DockerRepoCredentials;
 import ciclops.credentials.NyxCredentials;
 import ciclops.credentials.fileGenerators.DockerLoginFileGenerator;
-import ciclops.credentials.fileGenerators.NyxLoginFileGenerator;
 import ciclops.credentials.service.CredentialsService;
 import ciclops.projects.Project;
 import ciclops.projects.service.ProjectsService;
@@ -22,9 +21,10 @@ public class Runner {
     private final Logger LOGGER = new Logger(Runner.class);
     private final UUID id;
     private final UUID projectId;
-    private static final String BUILD_POD_IMAGE = "ciclopsbuilder:0.22";
+    private static final String BUILD_POD_IMAGE = "ciclopsbuilder:0.39";
     private static final CredentialsService credentialsService = CredentialsService.getInstance();
     private final List<String> additionalMounts = new ArrayList<>();
+    private final Map<String, String> additionalEnv = new HashMap<>();
 
     public Runner(UUID id, UUID projectId) {
         this.id = id;
@@ -48,7 +48,7 @@ public class Runner {
 
         final AbstractUsernamePasswordCredentials[] credentials = getCredentials(project);
 
-        if (!generateDockerLogin(credentials) || !generateNyxLogin(credentials)) {
+        if (!generateDockerLogin(credentials) || !setNyxCredentials(credentials)) {
             return;
         }
 
@@ -64,6 +64,20 @@ public class Runner {
             return true;
         }
 
+        for (DockerRepoCredentials dockerCredential : dockerCredentials) {
+            if (
+                    dockerCredential.getHost() == null || dockerCredential.getHost().isEmpty() ||
+                    dockerCredential.getUsername() == null || dockerCredential.getUsername().isEmpty() ||
+                    dockerCredential.getPassword() == null || dockerCredential.getPassword().isEmpty()
+            ) {
+                LOGGER.error("invalid docker credentials for project  " + projectId);
+                return false;
+            }
+
+            additionalEnv.put("DOCKER_" + dockerCredential.getHost().toUpperCase() + "_USERNAME", dockerCredential.getUsername());
+            additionalEnv.put("DOCKER_" + dockerCredential.getHost().toUpperCase() + "_PASSWORD", dockerCredential.getPassword());
+        }
+
         final DockerLoginFileGenerator dockerLoginFileGenerator = new DockerLoginFileGenerator(dockerCredentials);
         additionalMounts.add(dockerLoginFileGenerator.getFileName() + ":" + dockerLoginFileGenerator.getContainerFilePath());
 
@@ -76,7 +90,7 @@ public class Runner {
         return true;
     }
 
-    private boolean generateNyxLogin(AbstractUsernamePasswordCredentials[] credentials) {
+    private boolean setNyxCredentials(AbstractUsernamePasswordCredentials[] credentials) {
         final List<NyxCredentials> nyxCredentials = Arrays.stream(credentials).filter(e -> e instanceof NyxCredentials).map(e -> (NyxCredentials) e).toList();
 
         if (nyxCredentials.isEmpty()) {
@@ -84,15 +98,17 @@ public class Runner {
             return true;
         }
 
-        final NyxLoginFileGenerator nyxLoginFileGenerator = new NyxLoginFileGenerator(nyxCredentials);
-        additionalMounts.add(nyxLoginFileGenerator.getFileName() + ":" + nyxLoginFileGenerator.getContainerFilePath());
+        for (NyxCredentials nyxCredential : nyxCredentials) {
+            if (
+                    nyxCredential.getHost() == null || nyxCredential.getHost().isEmpty() ||
+                    nyxCredential.getPassword() == null || nyxCredential.getPassword().isEmpty()
+            ) {
+                LOGGER.error("invalid nyx credentials for project " + projectId);
+                return false;
+            }
 
-        if (!writeAuthFile(nyxLoginFileGenerator.getFileContent(), nyxLoginFileGenerator.getFileName())) {
-            cleanup();
-            LOGGER.error("Failed to write nyx auth file for project " + projectId);
-            return false;
+            additionalEnv.put("NYX_" + nyxCredential.getHost().toUpperCase() + "_PASSWORD", nyxCredential.getPassword());
         }
-
         return true;
     }
 
@@ -164,14 +180,22 @@ public class Runner {
         return mounts.toString();
     }
 
+    private String getEnv() {
+        final StringBuilder env = new StringBuilder();
+        for (Map.Entry<String, String> entry : additionalEnv.entrySet()) {
+            env.append("-e ").append(entry.getKey().replace(".", "_")).append("=\"").append(entry.getValue()).append("\" ");
+        }
+        return env.toString();
+    }
+
     private void initBuildPod(String scmUrl) {
         // TODO
-        // set env variables
-        // - scmURL
         // - inject git credentials
         final String separator = "---" + id + "---";
+        additionalEnv.put("SCM_URL", scmUrl);
+        additionalEnv.put("SEPARATOR", separator);
 
-        final String command = "podman run -e SEPARATOR=" + separator + " --privileged " + getMounts() + "--rm " + BUILD_POD_IMAGE;
+        final String command = "podman run " + getEnv() + "--privileged " + getMounts() + "--rm " + BUILD_POD_IMAGE;
         final NewJson processLog = new NewJson();
         processLog.setString("id", id.toString());
 

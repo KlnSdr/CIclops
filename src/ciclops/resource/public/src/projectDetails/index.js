@@ -38,6 +38,14 @@ function renderLastLogs() {
       }
       logLine.appendChild(element);
     });
+
+    const bttnRawLogs = document.createElement("button");
+    bttnRawLogs.innerText = "raw";
+    bttnRawLogs.addEventListener("click", () =>
+      openPopupWithLogs(log["rawOutput"])
+    );
+    logLine.appendChild(bttnRawLogs);
+
     container.appendChild(logLine);
   });
 }
