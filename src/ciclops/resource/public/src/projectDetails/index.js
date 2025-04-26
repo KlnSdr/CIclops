@@ -78,9 +78,42 @@ function openSettings(id) {
   ulCreds.id = "outCredentials";
   content.appendChild(ulCreds);
 
+  addWebhookInfo(id, content);
+
   openPopup(content);
 
   loadCredentials(data.credentials);
+}
+
+function addWebhookInfo(id, parent) {
+  const headline = document.createElement("h1");
+  headline.innerText = "webhooks";
+  parent.appendChild(headline);
+
+  ["github"].forEach((host) => {
+    const bttn = document.createElement("button");
+    bttn.innerText = host;
+    bttn.addEventListener("click", () => {
+      const url = `${window.location.protocol}//${window.location.host}/rest/projects/id/${id}/webhook/${host}`;
+      navigator.clipboard.writeText(url).then(
+        () => {
+          cssPulse(true, bttn);
+        },
+        (err) => {
+          console.error(err);
+          cssPulse(false, bttn);
+        }
+      );
+    });
+    parent.appendChild(bttn);
+  });
+}
+
+function cssPulse(success, element) {
+  element.classList.add(`pulse${success ? "Green" : "Red"}`);
+  setTimeout(() => {
+    element.classList.remove(`pulse${success ? "Green" : "Red"}`);
+  }, 750);
 }
 
 function loadCredentials(currentCredentials) {

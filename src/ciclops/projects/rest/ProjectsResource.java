@@ -78,8 +78,8 @@ public class ProjectsResource {
         context.getResponse().setHeader("Location", BASE_PATH + "/id/" + project.getId());
     }
 
-    @Post(BASE_PATH + "/id/{id}/webhook")
-    public void webhook(HttpContext context) {
+    @Post(BASE_PATH + "/id/{id}/webhook/github")
+    public void webhookGithub(HttpContext context) {
         final NewJson body = context.getRequest().getBody();
         if (body == null) {
             context.getResponse().setCode(ResponseCodes.BAD_REQUEST);
@@ -93,7 +93,7 @@ public class ProjectsResource {
             context.getResponse().setCode(ResponseCodes.NOT_FOUND);
             return;
         }
-        new PushWebhookHandler(project, body).handle();
+        new GithubPushWebhookHandler(project, body).handle();
         context.getResponse().setCode(ResponseCodes.ACCEPTED);
     }
 

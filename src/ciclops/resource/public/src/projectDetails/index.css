@@ -22,3 +22,31 @@
 .fail {
   background-color: #f4cece;
 }
+
+@keyframes pulseSuccess {
+  0%,
+  100% {
+    background-color: white;
+  }
+  50% {
+    background-color: #def8de;
+  }
+}
+
+.pulseGreen {
+  animation: pulseSuccess 0.5s ease-in-out;
+}
+
+@keyframes pulseFail {
+  0%,
+  100% {
+    background-color: white;
+  }
+  50% {
+    background-color: #f4cece;
+  }
+}
+
+.pulseRed {
+  animation: pulseFail 0.5s ease-in-out;
+}

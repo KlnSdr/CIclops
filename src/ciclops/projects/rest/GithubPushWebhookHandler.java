@@ -5,12 +5,12 @@ import ciclops.runner.RunnerManager;
 import common.logger.Logger;
 import dobby.util.json.NewJson;
 
-public class PushWebhookHandler {
-    private static final Logger LOGGER = new Logger(PushWebhookHandler.class);
+public class GithubPushWebhookHandler {
+    private static final Logger LOGGER = new Logger(GithubPushWebhookHandler.class);
     private final Project project;
     private final NewJson hookData;
 
-    public PushWebhookHandler(Project project, NewJson hookData) {
+    public GithubPushWebhookHandler(Project project, NewJson hookData) {
         this.project = project;
         this.hookData = hookData;
     }
