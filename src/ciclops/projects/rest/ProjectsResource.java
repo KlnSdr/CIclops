@@ -127,6 +127,20 @@ public class ProjectsResource {
     }
 
     @AuthorizedOnly
+    @Post(BASE_PATH + "/id/{id}/trigger-build/release")
+    public void triggerReleaseBuild(HttpContext context) {
+        final String id = context.getRequest().getParam("id");
+        final Project project = service.findById(id);
+
+        if (project == null || !project.getOwner().equals(UserUtil.getCurrentUserId(context))) {
+            context.getResponse().setCode(ResponseCodes.NOT_FOUND);
+            return;
+        }
+
+        RunnerManager.getInstance().addReleaseBuildToQueue(project.getId());
+    }
+
+    @AuthorizedOnly
     @Put(BASE_PATH + "/id/{id}/credentials")
     public void updateCredentials(HttpContext context) {
         final String id = context.getRequest().getParam("id");

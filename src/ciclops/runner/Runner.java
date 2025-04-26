@@ -21,14 +21,20 @@ public class Runner {
     private final Logger LOGGER = new Logger(Runner.class);
     private final UUID id;
     private final UUID projectId;
-    private static final String BUILD_POD_IMAGE = "ciclopsbuilder:0.39";
+    private final boolean isRelease;
+    private static final String BUILD_POD_IMAGE = "ciclopsbuilder:0.45";
     private static final CredentialsService credentialsService = CredentialsService.getInstance();
     private final List<String> additionalMounts = new ArrayList<>();
     private final Map<String, String> additionalEnv = new HashMap<>();
 
     public Runner(UUID id, UUID projectId) {
+        this(id, projectId, false);
+    }
+
+    public Runner(UUID id, UUID projectId, boolean isRelease) {
         this.id = id;
         this.projectId = projectId;
+        this.isRelease = isRelease;
     }
 
     public void start() {
@@ -52,6 +58,7 @@ public class Runner {
             return;
         }
 
+        additionalEnv.put("RELEASE", String.valueOf(isRelease));
         initBuildPod(scmUrl);
         cleanup();
     }

@@ -14,11 +14,13 @@ public class RunnerManager {
     private static RunnerManager instance;
     private final Logger LOGGER = new Logger(RunnerManager.class);
     private final ConcurrentLinkedQueue<UUID> buildQueue;
-    private int runningBuilds = 0;
+    private final ConcurrentLinkedQueue<UUID> releaseBuildQueue;
     private final List<UUID> runningBuildsList;
+    private int runningBuilds = 0;
 
     private RunnerManager() {
         this.buildQueue = new ConcurrentLinkedQueue<>();
+        this.releaseBuildQueue = new ConcurrentLinkedQueue<>();
         this.runningBuildsList = new ArrayList<>();
 
         LOGGER.info("adding build queue check task");
@@ -37,6 +39,11 @@ public class RunnerManager {
         buildQueue.add(projectId);
     }
 
+    public synchronized void addReleaseBuildToQueue(UUID projectId) {
+        LOGGER.debug("Adding build to queue: " + projectId);
+        releaseBuildQueue.add(projectId);
+    }
+
     private synchronized void checkQueue() {
         LOGGER.debug("Checking build queue");
         final int maxRunningBuilds = Config.getInstance().getInt("application.runner.maxCount", 5);
@@ -44,6 +51,29 @@ public class RunnerManager {
         if (getRunningBuilds() >= maxRunningBuilds) {
             return;
         }
+        while (getRunningBuilds() < maxRunningBuilds && !releaseBuildQueue.isEmpty()) {
+            final UUID projectId = releaseBuildQueue.poll();
+            if (projectId == null) {
+                continue;
+            }
+            LOGGER.debug("Starting release build for project: " + projectId);
+            incrementRunningBuilds();
+            final UUID runnerId = UUID.randomUUID();
+            addRunningBuild(runnerId);
+            new Thread(() -> {
+                try {
+                    final Runner runner = new Runner(runnerId, projectId, true);
+                    runner.start();
+                } catch (Exception e) {
+                    LOGGER.error("Error starting release build for project: " + projectId);
+                    LOGGER.trace(e);
+                } finally {
+                    decrementRunningBuilds();
+                    removeRunningBuild(runnerId);
+                }
+            }).start();
+        }
+
         while (getRunningBuilds() < maxRunningBuilds && !buildQueue.isEmpty()) {
             final UUID projectId = buildQueue.poll();
             if (projectId == null) {
