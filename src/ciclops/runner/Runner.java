@@ -81,8 +81,14 @@ public class Runner {
                 return false;
             }
 
-            additionalEnv.put("DOCKER_" + dockerCredential.getHost().toUpperCase() + "_USERNAME", dockerCredential.getUsername());
-            additionalEnv.put("DOCKER_" + dockerCredential.getHost().toUpperCase() + "_PASSWORD", dockerCredential.getPassword());
+            final DockerRepoCredentials decryptedCredential = (DockerRepoCredentials) credentialsService.decryptCredentials(dockerCredential);
+            if (decryptedCredential == null) {
+                LOGGER.error("Failed to decrypt docker credentials for project " + projectId);
+                return false;
+            }
+
+            additionalEnv.put("DOCKER_" + decryptedCredential.getHost().toUpperCase() + "_USERNAME", dockerCredential.getUsername());
+            additionalEnv.put("DOCKER_" + decryptedCredential.getHost().toUpperCase() + "_PASSWORD", dockerCredential.getPassword());
         }
 
         final DockerLoginFileGenerator dockerLoginFileGenerator = new DockerLoginFileGenerator(dockerCredentials);
@@ -114,7 +120,13 @@ public class Runner {
                 return false;
             }
 
-            additionalEnv.put("NYX_" + nyxCredential.getHost().toUpperCase() + "_PASSWORD", nyxCredential.getPassword());
+            final NyxCredentials decryptedCredential = (NyxCredentials) credentialsService.decryptCredentials(nyxCredential);
+            if (decryptedCredential == null) {
+                LOGGER.error("Failed to decrypt nyx credentials for project " + projectId);
+                return false;
+            }
+
+            additionalEnv.put("NYX_" + nyxCredential.getHost().toUpperCase() + "_PASSWORD", decryptedCredential.getPassword());
         }
         return true;
     }

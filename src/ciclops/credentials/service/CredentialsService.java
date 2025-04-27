@@ -4,6 +4,7 @@ import ciclops.credentials.AbstractUsernamePasswordCredentials;
 import ciclops.credentials.DockerRepoCredentials;
 import ciclops.credentials.NullCredentials;
 import ciclops.credentials.NyxCredentials;
+import ciclops.security.service.SecurityService;
 import dobby.util.json.NewJson;
 import thot.connector.Connector;
 import thot.janus.Janus;
@@ -15,6 +16,7 @@ import java.util.UUID;
 public class CredentialsService {
     public static final String BUCKET_NAME = "ciclops_credentials";
     private static CredentialsService instance;
+    private static final SecurityService securityService = SecurityService.getInstance();
 
     private CredentialsService() {
     }
@@ -27,7 +29,24 @@ public class CredentialsService {
     }
 
     public boolean saveCredentials(AbstractUsernamePasswordCredentials credentials) {
-        return Connector.write(BUCKET_NAME, credentials.getKey(), credentials.toJson());
+        final AbstractUsernamePasswordCredentials encryptedCredentials = encryptCredentials(credentials);
+        if (encryptedCredentials == null) {
+            return false;
+        }
+        return Connector.write(BUCKET_NAME, credentials.getKey(), encryptedCredentials.toJson());
+    }
+
+    private AbstractUsernamePasswordCredentials encryptCredentials(AbstractUsernamePasswordCredentials credentials) {
+        final String encryptedPassword = securityService.encryptForUser(credentials.getPassword(), credentials.getOwner());
+        final String encryptedUserName = securityService.encryptForUser(credentials.getUsername(), credentials.getOwner());
+
+        if (encryptedPassword == null || encryptedUserName == null) {
+            return null;
+        }
+
+        credentials.setPassword(encryptedPassword);
+        credentials.setUsername(encryptedUserName);
+        return credentials;
     }
 
     public AbstractUsernamePasswordCredentials getCredentials(String key) {
@@ -38,6 +57,19 @@ public class CredentialsService {
             return null;
         }
         return getConcreteImplementation(json);
+    }
+
+    public AbstractUsernamePasswordCredentials decryptCredentials(AbstractUsernamePasswordCredentials credentials) {
+        final String decryptedPassword = securityService.decryptForUser(credentials.getPassword(), credentials.getOwner());
+        final String decryptedUserName = securityService.decryptForUser(credentials.getUsername(), credentials.getOwner());
+
+        if (decryptedPassword == null || decryptedUserName == null) {
+            return null;
+        }
+
+        credentials.setPassword(decryptedPassword);
+        credentials.setUsername(decryptedUserName);
+        return credentials;
     }
 
     public AbstractUsernamePasswordCredentials[] getCredentialsForUser(UUID userId) {
