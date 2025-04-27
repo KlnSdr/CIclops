@@ -284,19 +284,21 @@ public class Runner {
 
         for (String line : processedLogs) {
             if (line.contains("---" + id + "---")) {
+                buffer = buffer.stream().filter(l -> !l.matches("CICLOPS_EXIT_CODE:.*")).toList();
                 if (!buffer.isEmpty()) {
                     final NewJson stepsLog = new NewJson();
                     stepsLog.setString("step", currentStep);
                     stepsLog.setList("log", buffer.stream().map(o -> (Object) o).toList());
                     steps.add(stepsLog);
-                    buffer = new ArrayList<>();
                 }
+                buffer = new ArrayList<>();
                 currentStep = line.replace("---" + id + "---", "");
             } else {
                 buffer.add(line);
             }
         }
 
+        buffer = buffer.stream().filter(l -> !l.matches("CICLOPS_EXIT_CODE:.*")).toList();
         if (!buffer.isEmpty()) {
             final NewJson stepsLog = new NewJson();
             stepsLog.setString("step", currentStep);
