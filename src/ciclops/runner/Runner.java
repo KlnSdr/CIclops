@@ -22,7 +22,7 @@ public class Runner {
     private final UUID id;
     private final UUID projectId;
     private final boolean isRelease;
-    private static final String BUILD_POD_IMAGE = "ciclopsbuilder:0.45";
+    private static final String BUILD_POD_IMAGE = "ciclopsbuilder:0.49";
     private static final CredentialsService credentialsService = CredentialsService.getInstance();
     private final List<String> additionalMounts = new ArrayList<>();
     private final Map<String, String> additionalEnv = new HashMap<>();
@@ -239,7 +239,13 @@ public class Runner {
             processLog.setString("error", e.getMessage());
         }
         processLog.setList("rawOutput", output.stream().map(o -> (Object) o).toList());
-        splitIntoSteps(processLog, output);
+        try {
+            splitIntoSteps(processLog, output);
+        } catch (Exception e) {
+            LOGGER.error("Failed to split logs into steps");
+            LOGGER.trace(e);
+            processLog.setList("steps", List.of());
+        }
 
         if (!BuildProcessLogService.getInstance().saveLog(id, projectId, processLog)) {
             LOGGER.error("Failed to save build log for project " + projectId);
@@ -273,7 +279,7 @@ public class Runner {
         final List<String> processedLogs = log.stream().map(l -> l.substring(l.indexOf("|") + 1)).toList();
         final List<NewJson> steps = new ArrayList<>();
 
-        String currentStep = "pod init";
+        String currentStep = "";
         List<String> buffer = new ArrayList<>();
 
         for (String line : processedLogs) {
