@@ -184,6 +184,12 @@ public class Runner {
         for (String mount : additionalMounts) {
             mounts.append("-v /tmp/ciclops/").append(id).append("/").append(mount).append(":ro ");
         }
+
+        mounts
+                .append("-v ")
+                .append(System.getProperty("user.home"))
+                .append("/.ciclops_ssh:/root/.ssh:ro ");
+
         return mounts.toString();
     }
 
