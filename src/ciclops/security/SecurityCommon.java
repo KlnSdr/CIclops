@@ -9,6 +9,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.spec.InvalidKeySpecException;
+import java.util.Base64;
 
 public abstract class SecurityCommon {
     protected int mode;
@@ -21,7 +22,7 @@ public abstract class SecurityCommon {
         return cipher.doFinal(message);
     }
 
-    protected static byte[] generate(int len) {
+    public static byte[] generate(int len) {
         final SecureRandom random;
         try {
             random = SecureRandom.getInstanceStrong();
@@ -48,5 +49,14 @@ public abstract class SecurityCommon {
                         .getEncoded(),
                 "AES"
         );
+    }
+
+
+    public static String toB64(byte[] bytes) {
+        return Base64.getEncoder().encodeToString(bytes);
+    }
+
+    public static byte[] fromB64(String base64) {
+        return Base64.getDecoder().decode(base64);
     }
 }

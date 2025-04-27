@@ -1,0 +1,58 @@
+package ciclops.security.service;
+
+import ciclops.security.Decryptor;
+import ciclops.security.Encryptor;
+import ciclops.security.SecurityCommon;
+import ciclops.security.UserEncryptionKey;
+import common.logger.Logger;
+
+import java.util.UUID;
+
+public class SecurityService {
+    public static final String MASTER_KEY = "ciclops";
+    private static final int KEY_SIZE = 64;
+    private static SecurityService instance;
+    private static final UserEncryptionKeyService userEncryptionKeyService = UserEncryptionKeyService.getInstance();
+    private static final Logger LOGGER = new Logger(SecurityService.class);
+
+    private SecurityService() {
+    }
+
+    public static SecurityService getInstance() {
+        if (instance == null) {
+            instance = new SecurityService();
+        }
+        return instance;
+    }
+
+    public String encryptForUser(String data, UUID userId) {
+        UserEncryptionKey userEncryptionKey = userEncryptionKeyService.getUserEncryptionKey(userId);
+        if (userEncryptionKey == null) {
+            LOGGER.debug("User encryption key not found for user: " + userId);
+            userEncryptionKey = new UserEncryptionKey();
+            userEncryptionKey.setOwner(userId);
+
+            userEncryptionKey.setEncryptionKey(generateNewUserKey());
+            if (!userEncryptionKeyService.saveUserEncryptionKey(userEncryptionKey)) {
+                LOGGER.error("Failed to save user encryption key for user: " + userId);
+                return null;
+            }
+        }
+
+        return new Encryptor().encrypt(data, userEncryptionKey.getEncryptionKey()).orElse(null);
+    }
+
+    private String generateNewUserKey() {
+        return SecurityCommon.toB64(SecurityCommon.generate(KEY_SIZE));
+    }
+
+    public String decryptForUser(String data, UUID userId) {
+        UserEncryptionKey userEncryptionKey = userEncryptionKeyService.getUserEncryptionKey(userId);
+        if (userEncryptionKey == null) {
+            LOGGER.debug("User encryption key not found for user: " + userId);
+            return null;
+        }
+
+        return new Decryptor().decrypt(data, userEncryptionKey.getEncryptionKey()).orElse(null);
+    }
+}

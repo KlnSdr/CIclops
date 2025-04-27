@@ -10,12 +10,12 @@ import java.util.UUID;
 public class UserEncryptionKey implements DataClass {
     @JanusUUID("owner")
     private UUID owner;
-    @JanusString("key")
-    private String key;
+    @JanusString("encryptionKey")
+    private String encryptionKey;
 
     public UserEncryptionKey(UUID owner, String key) {
         this.owner = owner;
-        this.key = key;
+        this.encryptionKey = key;
     }
 
     public UserEncryptionKey() {
@@ -30,11 +30,11 @@ public class UserEncryptionKey implements DataClass {
     }
 
     public String getEncryptionKey() {
-        return key;
+        return encryptionKey;
     }
 
     public void setEncryptionKey(String key) {
-        this.key = key;
+        this.encryptionKey = key;
     }
 
     @Override
@@ -45,7 +45,7 @@ public class UserEncryptionKey implements DataClass {
     @Override
     public NewJson toJson() {
         final NewJson json = new NewJson();
-        json.setString("key", key);
+        json.setString("encryptionKey", encryptionKey);
         json.setString("owner", owner.toString());
         return json;
     }

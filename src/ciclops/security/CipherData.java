@@ -1,6 +1,7 @@
 package ciclops.security;
 
-import java.util.Base64;
+import static ciclops.security.SecurityCommon.fromB64;
+import static ciclops.security.SecurityCommon.toB64;
 
 public record CipherData(byte[] cipherText, byte[] salt, byte[] iv) {
     private static final String VERSION = "v1";
@@ -27,14 +28,6 @@ public record CipherData(byte[] cipherText, byte[] salt, byte[] iv) {
         final byte[] iv = fromB64(parts[3]);
 
         return new CipherData(cipherText, salt, iv);
-    }
-
-    private static String toB64(byte[] bytes) {
-        return Base64.getEncoder().encodeToString(bytes);
-    }
-
-    private static byte[] fromB64(String base64) {
-        return Base64.getDecoder().decode(base64);
     }
 
     public String serialize() {
