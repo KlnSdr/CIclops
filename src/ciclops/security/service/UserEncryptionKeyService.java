@@ -11,10 +11,9 @@ import thot.janus.Janus;
 import java.util.Optional;
 import java.util.UUID;
 
-import static ciclops.security.service.SecurityService.MASTER_KEY;
-
 public class UserEncryptionKeyService {
     public static final String BUCKET_NAME = "ciclops_user_encryption_key";
+    private static final SecurityService securityService = SecurityService.getInstance();
     private static UserEncryptionKeyService instance;
     private static final Logger LOGGER = new Logger(UserEncryptionKeyService.class);
 
@@ -38,7 +37,7 @@ public class UserEncryptionKeyService {
         final UserEncryptionKey decryptedKey = new UserEncryptionKey();
         decryptedKey.setOwner(key.getOwner());
 
-        final Optional<String> decryptedKeyString = new Decryptor().decrypt(key.getEncryptionKey(), MASTER_KEY);
+        final Optional<String> decryptedKeyString = new Decryptor().decrypt(key.getEncryptionKey(), securityService.getMasterKey());
         if (decryptedKeyString.isPresent()) {
             decryptedKey.setEncryptionKey(decryptedKeyString.get());
         } else {
@@ -49,7 +48,7 @@ public class UserEncryptionKeyService {
     }
 
     public boolean saveUserEncryptionKey(UserEncryptionKey userEncryptionKey) {
-        final String encryptedKey = new Encryptor().encrypt(userEncryptionKey.getEncryptionKey(), MASTER_KEY).orElse(null);
+        final String encryptedKey = new Encryptor().encrypt(userEncryptionKey.getEncryptionKey(), securityService.getMasterKey()).orElse(null);
         if (encryptedKey == null) {
             LOGGER.error("Failed to encrypt user encryption key for user: " + userEncryptionKey.getOwner());
             return false;

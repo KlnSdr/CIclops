@@ -9,7 +9,7 @@ import common.logger.Logger;
 import java.util.UUID;
 
 public class SecurityService {
-    public static final String MASTER_KEY = "ciclops";
+    private String MASTER_KEY;
     private static final int KEY_SIZE = 64;
     private static SecurityService instance;
     private static final UserEncryptionKeyService userEncryptionKeyService = UserEncryptionKeyService.getInstance();
@@ -23,6 +23,17 @@ public class SecurityService {
             instance = new SecurityService();
         }
         return instance;
+    }
+
+    public void init() {
+        MASTER_KEY = System.getenv("MASTER_KEY");
+        if (MASTER_KEY == null) {
+            throw new IllegalStateException("MASTER_KEY environment variable is not set");
+        }
+    }
+
+    public String getMasterKey() {
+        return MASTER_KEY;
     }
 
     public String encryptForUser(String data, UUID userId) {
