@@ -22,7 +22,7 @@ public class Runner {
     private final UUID id;
     private final UUID projectId;
     private final boolean isRelease;
-    private static final String BUILD_POD_IMAGE = "ciclopsbuilder:0.49";
+    private static final String BUILD_POD_IMAGE = "docker.klnsdr.com/ciclopsbuilder:1.0-1";
     private static final CredentialsService credentialsService = CredentialsService.getInstance();
     private final List<String> additionalMounts = new ArrayList<>();
     private final Map<String, String> additionalEnv = new HashMap<>();
@@ -214,13 +214,11 @@ public class Runner {
     }
 
     private void initBuildPod(String scmUrl) {
-        // TODO
-        // - inject git credentials
         final String separator = "---" + id + "---";
         additionalEnv.put("SCM_URL", scmUrl);
         additionalEnv.put("SEPARATOR", separator);
 
-        final String command = "podman run " + getEnv() + "--privileged " + getMounts() + "--rm " + BUILD_POD_IMAGE;
+        final String command = "podman run -v /var/lib/containers:/var/lib/containers " + getEnv() + "--privileged " + getMounts() + "--rm " + BUILD_POD_IMAGE;
         final NewJson processLog = new NewJson();
         processLog.setString("id", id.toString());
 
