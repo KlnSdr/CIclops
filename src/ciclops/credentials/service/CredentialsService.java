@@ -4,7 +4,7 @@ import ciclops.credentials.AbstractUsernamePasswordCredentials;
 import ciclops.credentials.DockerRepoCredentials;
 import ciclops.credentials.NullCredentials;
 import ciclops.credentials.NyxCredentials;
-import ciclops.security.service.SecurityService;
+import hades.security.service.SecurityService;
 import dobby.util.json.NewJson;
 import thot.connector.Connector;
 import thot.janus.Janus;
