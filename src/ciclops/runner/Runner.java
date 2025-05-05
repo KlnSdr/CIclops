@@ -201,6 +201,7 @@ public class Runner {
                 .append("-v ")
                 .append(System.getProperty("user.home"))
                 .append("/.ciclops_ssh:/root/.ssh:ro ");
+        mounts.append("-v /var/lib/containers:/var/lib/containers ");
 
         return mounts.toString();
     }
@@ -218,7 +219,7 @@ public class Runner {
         additionalEnv.put("SCM_URL", scmUrl);
         additionalEnv.put("SEPARATOR", separator);
 
-        final String command = "podman run -v /var/lib/containers:/var/lib/containers " + getEnv() + "--privileged " + getMounts() + "--rm " + BUILD_POD_IMAGE;
+        final String command = "podman run " + getEnv() + "--privileged " + getMounts() + "--rm " + BUILD_POD_IMAGE;
         final NewJson processLog = new NewJson();
         processLog.setString("id", id.toString());
 
