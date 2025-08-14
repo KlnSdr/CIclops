@@ -8,7 +8,14 @@ import ciclops.credentials.service.CredentialsService;
 import ciclops.projects.Project;
 import ciclops.projects.service.ProjectsService;
 import ciclops.runner.service.BuildProcessLogService;
+import ciclops.webhooks.WebhookConfig;
+import ciclops.webhooks.WebhookData;
+import ciclops.webhooks.service.WebhookConfigService;
+import common.http.Client;
+import common.http.HttpResponse;
 import common.logger.Logger;
+import dobby.io.response.ResponseCodes;
+import dobby.util.Tupel;
 import dobby.util.json.NewJson;
 
 import java.io.BufferedReader;
@@ -275,6 +282,8 @@ public class Runner {
         } else {
             LOGGER.debug("Build log added to last runs successfully for project " + projectId);
         }
+
+        publishWebhooks();
     }
 
     private int findPipelineExitCode(List<String> output) {
@@ -324,5 +333,73 @@ public class Runner {
         }
 
         pipelineLog.setList("steps", steps.stream().map(o -> (Object) o).toList());
+    }
+
+    private void publishWebhooks() {
+        final NewJson pipelineLog = BuildProcessLogService.getInstance().getLog(id + "_" + projectId);
+
+        final WebhookData webhookData = new WebhookData();
+
+        final Project project = ProjectsService.getInstance().findById(projectId.toString());
+        if (project == null) {
+            LOGGER.warn("Project not found: " + projectId + ". Aborting build.");
+            return;
+        }
+
+        final WebhookConfig[] webhooks = WebhookConfigService.getInstance().findByOwner(project.getOwner());
+        webhookData.setProjectName(project.getName());
+        webhookData.setProjectKey(project.getKey());
+        webhookData.setRunnerId(id);
+        webhookData.setSuccess(pipelineLog.getBoolean("success"));
+        webhookData.setReleaseBuild(isRelease);
+        if (!pipelineLog.getBoolean("success")) {
+            webhookData.setErrorMessage(pipelineLog.getString("error"));
+        } else {
+            webhookData.setErrorMessage(null);
+        }
+
+        final Client client = new Client();
+        for (WebhookConfig webhook : webhooks) {
+            final HttpResponse response = client.post(webhook.getUrl(), buildDiscordWebhookBody(webhookData));
+            if (response.getResponseCode() != ResponseCodes.NO_CONTENT) {
+                LOGGER.warn("Failed to send webhook to " + webhook.getUrl() + ". Response code: " + response.getResponseCode());
+            }
+        }
+    }
+
+    public static NewJson buildDiscordWebhookBody(WebhookData data) {
+        final NewJson root = new NewJson();
+
+        final NewJson embed = new NewJson();
+        embed.setString("title", "Build Result");
+        embed.setInt("color", data.isSuccess() ? 0x00FF00 : 0xFF0000); // green if success, red if fail
+
+        List<Object> fields = new ArrayList<>();
+
+        final NewJson field1 = new NewJson();
+        field1.setString("name", "Project Name");
+        field1.setString("value", data.getProjectName());
+        field1.setBoolean("inline", true);
+        fields.add(field1);
+
+        final NewJson field2 = new NewJson();
+        field2.setString("name", "Success");
+        field2.setString("value", data.isSuccess() ? "✅ Yes" : "❌ No");
+        field2.setBoolean("inline", true);
+        fields.add(field2);
+
+        final NewJson field3 = new NewJson();
+        field3.setString("name", "Release Build");
+        field3.setString("value", data.isReleaseBuild() ? "📦 Yes" : "🛠️ No");
+        field3.setBoolean("inline", true);
+        fields.add(field3);
+
+        embed.setList("fields", fields);
+
+        final List<Object> embeds = new ArrayList<>();
+        embeds.add(embed);
+        root.setList("embeds", embeds);
+
+        return root;
     }
 }

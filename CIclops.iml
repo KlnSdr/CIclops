@@ -7,6 +7,7 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="library" name="hades-2.2-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="http-1.0-snapshot" level="project" />
+    <orderEntry type="library" name="hades-2.3" level="project" />
   </component>
 </module>
