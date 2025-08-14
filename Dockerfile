@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY --from=builder /app/build/ciclops-1.0.jar /app/app.jar
+COPY --from=builder /app/build/ciclops-1.1.jar /app/app.jar
 
 EXPOSE 8080
 
