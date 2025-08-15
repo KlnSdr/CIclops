@@ -8,6 +8,8 @@ import ciclops.credentials.service.CredentialsService;
 import ciclops.projects.Project;
 import ciclops.projects.service.ProjectsService;
 import ciclops.runner.service.BuildProcessLogService;
+import ciclops.settings.Settings;
+import ciclops.settings.service.SettingsService;
 import ciclops.webhooks.WebhookConfig;
 import ciclops.webhooks.WebhookData;
 import ciclops.webhooks.service.WebhookConfigService;
@@ -29,7 +31,7 @@ public class Runner {
     private final UUID id;
     private final UUID projectId;
     private final boolean isRelease;
-    private static final String BUILD_POD_IMAGE = "docker.klnsdr.com/ciclopsbuilder:1.0-1";
+    private static final String BUILD_POD_IMAGE = "docker.klnsdr.com/ciclopsbuilder:1.1-4";
     private static final CredentialsService credentialsService = CredentialsService.getInstance();
     private final List<String> additionalMounts = new ArrayList<>();
     private final Map<String, String> additionalEnv = new HashMap<>();
@@ -51,6 +53,13 @@ public class Runner {
         if (project == null) {
             LOGGER.warn("Project not found: " + projectId + ". Aborting build.");
             return;
+        }
+
+        final Settings settings = SettingsService.getInstance().find(project.getOwner());
+
+        if (settings != null) {
+            additionalEnv.put("GIT_USER", settings.getGitUsername());
+            additionalEnv.put("GIT_EMAIL", settings.getGitMail());
         }
 
         final String scmUrl = project.getGitUrl();
