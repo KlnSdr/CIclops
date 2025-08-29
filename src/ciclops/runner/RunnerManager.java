@@ -57,21 +57,7 @@ public class RunnerManager {
                 continue;
             }
             LOGGER.debug("Starting release build for project: " + projectId);
-            incrementRunningBuilds();
-            final UUID runnerId = UUID.randomUUID();
-            addRunningBuild(runnerId);
-            new Thread(() -> {
-                try {
-                    final Runner runner = new Runner(runnerId, projectId, true);
-                    runner.start();
-                } catch (Exception e) {
-                    LOGGER.error("Error starting release build for project: " + projectId);
-                    LOGGER.trace(e);
-                } finally {
-                    decrementRunningBuilds();
-                    removeRunningBuild(runnerId);
-                }
-            }).start();
+            spawnRunnerThread(projectId, true);
         }
 
         while (getRunningBuilds() < maxRunningBuilds && !buildQueue.isEmpty()) {
@@ -80,22 +66,43 @@ public class RunnerManager {
                 continue;
             }
             LOGGER.debug("Starting build for project: " + projectId);
-            incrementRunningBuilds();
-            final UUID runnerId = UUID.randomUUID();
-            addRunningBuild(runnerId);
-            new Thread(() -> {
+            spawnRunnerThread(projectId, false);
+        }
+    }
+
+    private void spawnRunnerThread(UUID projectId, boolean isRelease) {
+        final int timeout = Config.getInstance().getInt("application.runner.timeout", 60);
+        incrementRunningBuilds();
+        final UUID runnerId = UUID.randomUUID();
+        addRunningBuild(runnerId);
+        final Runner runner = new Runner(runnerId, projectId, isRelease);
+        final Thread timeoutChecker = new Thread(() -> {
+            final Thread worker = new Thread(() -> {
                 try {
-                    final Runner runner = new Runner(runnerId, projectId);
                     runner.start();
                 } catch (Exception e) {
                     LOGGER.error("Error starting build for project: " + projectId);
                     LOGGER.trace(e);
-                } finally {
-                    decrementRunningBuilds();
-                    removeRunningBuild(runnerId);
                 }
-            }).start();
-        }
+            });
+            worker.start();
+            try {
+                worker.join(timeout * 60000L);
+                if (worker.isAlive()) {
+                    LOGGER.warn("Timed out waiting for build to finish for project: " + projectId);
+                    runner.abort();
+                    worker.interrupt();
+                }
+            } catch(InterruptedException ex) {
+                LOGGER.warn("Interrupted while waiting for build to finish for project: " + projectId);
+                runner.abort();
+                worker.interrupt();
+            } finally {
+                decrementRunningBuilds();
+                removeRunningBuild(runnerId);
+            }
+        });
+        timeoutChecker.start();
     }
 
     private synchronized void incrementRunningBuilds() {

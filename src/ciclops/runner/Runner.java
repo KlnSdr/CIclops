@@ -35,6 +35,10 @@ public class Runner {
     private static final CredentialsService credentialsService = CredentialsService.getInstance();
     private final List<String> additionalMounts = new ArrayList<>();
     private final Map<String, String> additionalEnv = new HashMap<>();
+    private final NewJson processLog = new NewJson();
+    private final List<String> output = new ArrayList<>();
+    private Process process;
+    private long startTime;
 
     public Runner(UUID id, UUID projectId) {
         this(id, projectId, false);
@@ -231,19 +235,18 @@ public class Runner {
     }
 
     private void initBuildPod(String scmUrl) {
+        startTime = System.currentTimeMillis();
         final String separator = "---" + id + "---";
         additionalEnv.put("SCM_URL", scmUrl);
         additionalEnv.put("SEPARATOR", separator);
 
         final String command = "podman run " + getEnv() + "--privileged " + getMounts() + "--rm " + BUILD_POD_IMAGE;
-        final NewJson processLog = new NewJson();
         processLog.setString("id", id.toString());
 
-        final List<String> output = new ArrayList<>();
         try {
             final ProcessBuilder processBuilder = new ProcessBuilder("sh", "-c", command);
             processBuilder.redirectErrorStream(true);
-            final Process process = processBuilder.start();
+            process = processBuilder.start();
 
             final BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
             String line;
@@ -271,6 +274,14 @@ public class Runner {
             processLog.setBoolean("success", false);
             processLog.setString("error", e.getMessage());
         }
+        processLog.setBoolean("timeout", false);
+        writeLog();
+        publishWebhooks();
+    }
+
+    private void writeLog() {
+        final long endTime = System.currentTimeMillis();
+        processLog.setInt("duration", (int) (endTime - startTime));
         processLog.setList("rawOutput", output.stream().map(o -> (Object) o).toList());
         try {
             splitIntoSteps(processLog, output);
@@ -291,8 +302,6 @@ public class Runner {
         } else {
             LOGGER.debug("Build log added to last runs successfully for project " + projectId);
         }
-
-        publishWebhooks();
     }
 
     private int findPipelineExitCode(List<String> output) {
@@ -374,6 +383,17 @@ public class Runner {
                 LOGGER.warn("Failed to send webhook to " + webhook.getUrl() + ". Response code: " + response.getResponseCode());
             }
         }
+    }
+
+    public void abort() {
+        if (process != null && process.isAlive()) {
+            process.destroyForcibly();
+        }
+        processLog.setBoolean("timeout", true);
+        processLog.setBoolean("success", false);
+        LOGGER.error("Pipeline timed out");
+        writeLog();
+        publishWebhooks();
     }
 
     public static NewJson buildDiscordWebhookBody(WebhookData data) {

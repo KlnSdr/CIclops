@@ -6,7 +6,8 @@
     "devMode": false,
     "runner": {
       "maxCount": 5,
-      "checkInterval": 5
+      "checkInterval": 5,
+      "timeout": 60
     }
   },
   "dobby": {
@@ -20,7 +21,7 @@
     "port": 8080,
     "threads": 10,
     "mode": "http",
-    "logLevel": "DEBUG"
+    "logLevel": "WARN"
   },
   "hades": {
     "disableWelcomeMessage": true,
