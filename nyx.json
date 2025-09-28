@@ -3,7 +3,7 @@
   "project": {
     "entry": "ciclops.Main",
     "name": "ciclops",
-    "version": "1.2-snapshot",
+    "version": "1.2",
     "group": "dobby",
     "dependencies": [
       {

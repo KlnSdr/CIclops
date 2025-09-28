@@ -1,7 +1,7 @@
 {
   "application": {
     "name": "ciclops",
-    "version": "1.2-snapshot",
+    "version": "1.2",
     "dbHost": "thot-container",
     "devMode": false,
     "runner": {
