@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{CONTEXT}}/create/index.css" />
     <script src="{{CONTEXT}}/settings/index.js"></script>
   </head>
-  <body onload="loadSettings()">
+  <body onload="loadSettings(); loadBuilderImage()">
     <a href="{{CONTEXT}}/">Home</a>
     <h1>Welcome to CIclops</h1>
     <ul id="outWebhooks"></ul>
@@ -19,6 +19,12 @@
       <input type="text" name="" id="inputGitMail" />
       <span></span>
       <button id="updateSettings" onclick="updateSettings()">speichern</button>
+    </div>
+    <div class="formCreateNew">
+      <label for="inputBuilderImage">Builder Image:</label>
+      <input type="text" name="" id="inputBuilderImage" />
+      <span></span>
+      <button id="updateBuilderImage" onclick="updateBuilderImage()">speichern</button>
     </div>
   </body>
 </html>

@@ -9,6 +9,7 @@ import ciclops.projects.Project;
 import ciclops.projects.service.ProjectsService;
 import ciclops.runner.service.BuildProcessLogService;
 import ciclops.settings.Settings;
+import ciclops.settings.service.BuilderImageService;
 import ciclops.settings.service.SettingsService;
 import ciclops.webhooks.WebhookConfig;
 import ciclops.webhooks.WebhookData;
@@ -31,8 +32,8 @@ public class Runner {
     private final UUID id;
     private final UUID projectId;
     private final boolean isRelease;
-    private static final String BUILD_POD_IMAGE = "docker.klnsdr.com/ciclopsbuilder:1.1-4";
     private static final CredentialsService credentialsService = CredentialsService.getInstance();
+    private static final BuilderImageService builderImageService = BuilderImageService.getInstance();
     private final List<String> additionalMounts = new ArrayList<>();
     private final Map<String, String> additionalEnv = new HashMap<>();
     private final NewJson processLog = new NewJson();
@@ -221,7 +222,7 @@ public class Runner {
                 .append("-v ")
                 .append(System.getProperty("user.home"))
                 .append("/.ciclops_ssh:/root/.ssh:ro ");
-        mounts.append("-v /var/lib/containers:/var/lib/containers ");
+//        mounts.append("-v /var/lib/containers:/var/lib/containers ");
 
         return mounts.toString();
     }
@@ -240,7 +241,13 @@ public class Runner {
         additionalEnv.put("SCM_URL", scmUrl);
         additionalEnv.put("SEPARATOR", separator);
 
-        final String command = "podman run " + getEnv() + "--privileged " + getMounts() + "--rm " + BUILD_POD_IMAGE;
+        final String buildPodVersion = builderImageService.getBuilderImage();
+        if (buildPodVersion == null || buildPodVersion.isEmpty()) {
+            LOGGER.error("No build pod image configured. Aborting build.");
+            return;
+        }
+
+        final String command = "podman run " + getEnv() + "--privileged " + getMounts() + "--rm " + buildPodVersion;
         processLog.setString("id", id.toString());
 
         try {
