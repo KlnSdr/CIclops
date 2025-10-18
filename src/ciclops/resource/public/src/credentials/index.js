@@ -73,3 +73,63 @@ function deleteCredentials(id) {
       alert("could not delete credentials");
     });
 }
+
+function loadEnvVars() {
+    const container = document.getElementById("outVars");
+    container.innerHTML = "";
+    fetch("{{CONTEXT}}/rest/env-vars")
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then((data) => {
+            data["envVars"].forEach((key) => {
+                const li = document.createElement("li");
+                li.innerText = key;
+
+                const bttnDelete = document.createElement("button");
+                bttnDelete.innerText = "x";
+                bttnDelete.addEventListener("click", () =>
+                    deleteEnvVar(key)
+                );
+                li.appendChild(bttnDelete);
+                container.appendChild(li);
+            });
+        })
+        .catch((e) => {
+            console.error(e);
+            container.innerText = "could not load env vars";
+        });
+}
+
+function createEnvVar() {
+    const name = document.getElementById("inputVarName").value;
+    const value = document.getElementById("inputEnvVarValue").value;
+
+    fetch(`{{CONTEXT}}/rest/env-vars`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            name: name,
+            value: value
+        }),
+    })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status} ${response.statusText}`);
+            }
+            loadEnvVars();
+            document.getElementById("inputVarName").value = "";
+            document.getElementById("inputEnvVarValue").value = "";
+        })
+        .catch((e) => {
+            console.error(e);
+            alert("failed to create env var");
+        });
+}
+
+function deleteEnvVar(id) {
+    alert("Not implemented yet!");
+}

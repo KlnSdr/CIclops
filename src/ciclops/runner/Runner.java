@@ -8,8 +8,10 @@ import ciclops.credentials.service.CredentialsService;
 import ciclops.projects.Project;
 import ciclops.projects.service.ProjectsService;
 import ciclops.runner.service.BuildProcessLogService;
+import ciclops.settings.EnvVar;
 import ciclops.settings.Settings;
 import ciclops.settings.service.BuilderImageService;
+import ciclops.settings.service.EnvVarService;
 import ciclops.settings.service.SettingsService;
 import ciclops.webhooks.WebhookConfig;
 import ciclops.webhooks.WebhookData;
@@ -34,6 +36,7 @@ public class Runner {
     private final boolean isRelease;
     private static final CredentialsService credentialsService = CredentialsService.getInstance();
     private static final BuilderImageService builderImageService = BuilderImageService.getInstance();
+    private static final EnvVarService envVarService = EnvVarService.getInstance();
     private final List<String> additionalMounts = new ArrayList<>();
     private final Map<String, String> additionalEnv = new HashMap<>();
     private final NewJson processLog = new NewJson();
@@ -79,6 +82,7 @@ public class Runner {
             return;
         }
 
+        loadCustomEnvVars(project.getOwner());
         additionalEnv.put("RELEASE", String.valueOf(isRelease));
         initBuildPod(scmUrl);
         cleanup();
@@ -284,6 +288,13 @@ public class Runner {
         processLog.setBoolean("timeout", false);
         writeLog();
         publishWebhooks();
+    }
+
+    private void loadCustomEnvVars(UUID userId) {
+        final List<EnvVar> envVars = envVarService.getEnvVarsForUser(userId);
+        for (EnvVar envVar : envVars) {
+            additionalEnv.put(envVar.getName(), envVar.getValue());
+        }
     }
 
     private void writeLog() {
