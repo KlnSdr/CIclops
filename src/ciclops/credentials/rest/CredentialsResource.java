@@ -18,11 +18,13 @@ public class CredentialsResource {
     private static final CredentialsService service = CredentialsService.getInstance();
     private static final String BASE_PATH = "/rest/credentials";
 
+    @AuthorizedOnly
     @Post(BASE_PATH + "/docker")
     public void addDockerCredentials(HttpContext context) {
         addCredentials(context, "DOCKER");
     }
 
+    @AuthorizedOnly
     @Post(BASE_PATH + "/nyx")
     public void addNyxCredentials(HttpContext context) {
         addCredentials(context, "NYX");

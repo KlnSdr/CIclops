@@ -6,11 +6,13 @@ import dobby.annotations.Put;
 import dobby.io.HttpContext;
 import dobby.io.response.ResponseCodes;
 import dobby.util.json.NewJson;
+import hades.annotations.AuthorizedOnly;
 
 public class BuilderImageResource {
     private static final String BASE_PATH = "/rest/builderImage";
     private static final BuilderImageService builderImageService = BuilderImageService.getInstance();
 
+    @AuthorizedOnly
     @Get(BASE_PATH)
     public void getBuilderImage(HttpContext context) {
         final String builderImage = builderImageService.getBuilderImage();
@@ -19,6 +21,7 @@ public class BuilderImageResource {
         context.getResponse().setBody(json);
     }
 
+    @AuthorizedOnly
     @Put(BASE_PATH)
     public void updateBuilderImage(HttpContext context) {
         final NewJson body = context.getRequest().getBody();
